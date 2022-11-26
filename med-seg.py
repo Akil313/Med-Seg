@@ -20,6 +20,10 @@ from patchify import patchify, unpatchify
 
 image_stack= tiff.imread("images/training.tif")
 mask_stack= tiff.imread("images/training_groundtruth.tif")
+test_image_shepp = cv2.imread("images/online_image.png", 0)
+test_image_shepp = cv2.resize(test_image_shepp, (256, 256), interpolation = cv2.INTER_AREA)
+test_image_shepp = np.expand_dims(test_image_shepp, -1)
+test_image_shepp = np.expand_dims(test_image_shepp, 0)
 
 all_image_patches = []
 for img in range(image_stack.shape[0]):
@@ -57,12 +61,28 @@ for img in range(mask_stack.shape[0]):
 masks = np.array(all_mask_patches)
 masks = np.expand_dims(masks, -1)
 
+
+test_image_shepp = cv2.imread("images/online_image.png", 0)
+test_image_shepp = cv2.resize(test_image_shepp, (256, 256), interpolation = cv2.INTER_AREA)
+test_image_shepp = np.expand_dims(test_image_shepp, 0)
+test_image_shepp = np.repeat(test_image_shepp, 100, axis=0)
+test_image_shepp = np.expand_dims(test_image_shepp, -1)
+
+test_image_shepp_mask = cv2.imread("images/factor_3_small_white_region_only.png", 0)
+test_image_shepp_mask = cv2.resize(test_image_shepp_mask, (256, 256), interpolation = cv2.INTER_AREA)
+test_image_shepp_mask = np.expand_dims(test_image_shepp_mask, 0)
+test_image_shepp_mask = np.repeat(test_image_shepp_mask, 100, axis=0)
+test_image_shepp_mask = np.expand_dims(test_image_shepp_mask, -1)
+
+X_train = X_test = test_image_shepp
+y_train = y_test = test_image_shepp_mask
+
 from sklearn.model_selection import train_test_split
 
-X_train, X_test, y_train, y_test = train_test_split(images[0:100], masks[0:100], test_size=0.25, random_state = 0)
+#X_train, X_test, y_train, y_test = train_test_split(test_image_shepp, test_image_shepp_mask, test_size=0.25, random_state = 0)
 
 
-image_number = random.randint(0, len(X_train))
+image_number = random.randint(0, len(X_train)-1)
 plt.figure(figsize=(12, 6))
 plt.subplot(121)
 plt.imshow(np.reshape(X_train[image_number], (256, 256)), cmap='gray')
@@ -103,8 +123,8 @@ mask_data_gen_args = dict(rotation_range=90,
                      zoom_range=0.3,
                      horizontal_flip=True,
                      vertical_flip=True,
-                     fill_mode='reflect',
-                     preprocessing_function = lambda x: np.where(x>0, 1, 0).astype(x.dtype)) #Binarize the output again. 
+                     fill_mode='reflect')
+                     #preprocessing_function = lambda x: np.where(x<1, 0, 1).astype(x.dtype)) #Binarize the output again. 
 
 image_data_generator = ImageDataGenerator(**img_data_gen_args)
 #image_data_generator.fit(X_train, augment=True, seed=seed)
@@ -128,10 +148,12 @@ my_generator = my_image_mask_generator(image_generator, mask_generator)
 
 validation_datagen = my_image_mask_generator(valid_img_generator, valid_mask_generator)
 
-
 x = image_generator.next()
 y = mask_generator.next()
-for i in range(0,1):
+
+test_mask_1 = y[1,:,:]
+
+for i in range(0,5):
     image = x[i]
     mask = y[i]
     plt.subplot(1,2,1)
@@ -144,9 +166,11 @@ for i in range(0,1):
 steps_per_epoch = 3*(len(X_train))//batch_size
 
 
-history = model.fit_generator(my_generator, validation_data=validation_datagen, 
+history = model.fit(my_generator, validation_data=validation_datagen, 
                     steps_per_epoch=steps_per_epoch, 
-                    validation_steps=steps_per_epoch, epochs=1)
+                    validation_steps=steps_per_epoch, epochs=20)
+
+print(history)
 
 
 #plot the training and validation accuracy and loss at each epoch
@@ -188,12 +212,15 @@ print("IoU socre is: ", iou_score)
 #model.load_weights('mitochondria_50_plus_100_epochs.hdf5') #Trained for 50 epochs and then additional 100
 #model.load_weights('mitochondria_gpu_tf1.4.hdf5')  #Trained for 50 epochs
 
-test_img_number = random.randint(0, len(X_test))
+test_img_number = random.randint(0, len(X_test)-1)
 test_img = X_test[test_img_number]
 ground_truth=y_test[test_img_number]
 test_img_norm=test_img[:,:,0][:,:,None]
 test_img_input=np.expand_dims(test_img_norm, 0)
-prediction = (model.predict(test_img_input)[0,:,:,0] > 0.2).astype(np.uint8)
+
+
+pre_pred = model.predict(test_image_shepp)[0,:,:,0]
+prediction = (model.predict(test_image_shepp)[0,:,:,0] > 0.2).astype(np.uint8)
 
 plt.figure(figsize=(16, 8))
 plt.subplot(231)
@@ -207,3 +234,10 @@ plt.title('Prediction on test image')
 plt.imshow(prediction, cmap='gray')
 
 plt.show()
+
+test_image_shepp_mask = cv2.imread("images/factor_3_small_white_region_only.png", 0)
+test_image_shepp_mask = cv2.resize(test_image_shepp_mask, (256, 256), interpolation = cv2.INTER_AREA)
+test_image_shepp_mask[175:, 175:] = 0
+plt.imshow(test_image_shepp_mask, cmap='gray')
+
+print(test_image_shepp_mask[175:, 175:].shape)
