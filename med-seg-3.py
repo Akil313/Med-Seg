@@ -35,6 +35,8 @@ y_train = y_test = test_image_shepp_mask
 
 from sklearn.model_selection import train_test_split
 
+#X_train, X_test, y_train, y_test = train_test_split(test_image_shepp, test_image_shepp_mask, test_size=0.25, random_state = 0)
+
 #Display the Shep Logan image and the target image
 image_number = random.randint(0, len(X_train)-1)
 plt.figure(figsize=(12, 6))
@@ -117,43 +119,46 @@ for i in range(0,5):
 
 steps_per_epoch = 3*(len(X_train))//batch_size
 
-checkpoint_path = "training_1/cp.ckpt"
-checkpoint_dir = os.path.dirname(checkpoint_path)
+if os.path.isfile("models/medseg_weights.h5"):
+  model.load_weights("models/medseg_weights.h5")
+else:
+  checkpoint_path = "training_1/cp.ckpt"
+  checkpoint_dir = os.path.dirname(checkpoint_path)
 
-# Create a callback that saves the model's weights
-cp_callback = ModelCheckpoint(filepath=checkpoint_path,
-                                                 save_weights_only=True,
-                                                 verbose=1)
+  # Create a callback that saves the model's weights
+  cp_callback = ModelCheckpoint(filepath=checkpoint_path,
+                                                  save_weights_only=True,
+                                                  verbose=1)
 
-history = model.fit(my_generator, validation_data=validation_datagen, 
-                      steps_per_epoch=steps_per_epoch, 
-                      validation_steps=steps_per_epoch, epochs=20,
-                      callbacks=[cp_callback])
+  history = model.fit(my_generator, validation_data=validation_datagen, 
+                        steps_per_epoch=steps_per_epoch, 
+                        validation_steps=steps_per_epoch, epochs=20,
+                        callbacks=[cp_callback])
 
-model.save_weights('models/medseg_weights.h5')
+  model.save_weights('models/medseg_weights.h5')
 
-#plot the training and validation accuracy and loss at each epoch
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(1, len(loss) + 1)
-plt.plot(epochs, loss, 'y', label='Training loss')
-plt.plot(epochs, val_loss, 'r', label='Validation loss')
-plt.title('Training and validation loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-plt.savefig('plots/train_val_loss.png')
+  #plot the training and validation accuracy and loss at each epoch
+  loss = history.history['loss']
+  val_loss = history.history['val_loss']
+  epochs = range(1, len(loss) + 1)
+  plt.plot(epochs, loss, 'y', label='Training loss')
+  plt.plot(epochs, val_loss, 'r', label='Validation loss')
+  plt.title('Training and validation loss')
+  plt.xlabel('Epochs')
+  plt.ylabel('Loss')
+  plt.legend()
+  plt.savefig('plots/train_val_loss.png')
 
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
+  acc = history.history['accuracy']
+  val_acc = history.history['val_accuracy']
 
-plt.plot(epochs, acc, 'y', label='Training acc')
-plt.plot(epochs, val_acc, 'r', label='Validation acc')
-plt.title('Training and validation accuracy')
-plt.xlabel('Epochs')
-plt.ylabel('Accuracy')
-plt.legend()
-plt.savefig('plots/train_val_accuracy.png')
+  plt.plot(epochs, acc, 'y', label='Training acc')
+  plt.plot(epochs, val_acc, 'r', label='Validation acc')
+  plt.title('Training and validation accuracy')
+  plt.xlabel('Epochs')
+  plt.ylabel('Accuracy')
+  plt.legend()
+  plt.savefig('plots/train_val_accuracy.png')
 
 #IOU
 y_pred=model.predict(X_test)
