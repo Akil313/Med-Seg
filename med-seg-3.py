@@ -1,3 +1,8 @@
+#When this program is run, if there exists a h5 model file in the models folder then the model will skip training and use the saved weights in that model folder.
+#To let the model train, delete the files in the model folder
+#When run, the model will predict on a random example from the testing set. All plots including the segmented images are saved in the plots folder.
+#For simplicity, the testing set is the same as the training set but to split the dataset into a training and testing set, uncomment line 43 which is the train_test_split function.
+
 import random
 from unet_model import build_unet
 from tensorflow.keras.utils import normalize
@@ -145,6 +150,7 @@ else:
   plt.plot(epochs, val_loss, 'r', label='Validation loss')
   plt.title('Training and validation loss')
   plt.xlabel('Epochs')
+
   plt.ylabel('Loss')
   plt.legend()
   plt.savefig('plots/train_val_loss.png')
